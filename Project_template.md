@@ -60,8 +60,13 @@
     - Добавьте в docker-compose новый сервис, kafka там уже есть
 
 Необходимые тесты для проверки этого API вызываются при запуске npm run test:local из папки tests/postman 
-Приложите скриншот тестов и скриншот состояния топиков Kafka http://localhost:8090 
+Приложите скриншот тестов и скриншот состояния топиков Kafka http://localhost:8090
 
+#### Тесты
+![Скриншот тестов](assets/images/tests_screen.png)
+
+#### Топики
+![Скриншот топиков](assets/images/topics_screen.png)
 
 ## Задание 3
 
@@ -113,6 +118,8 @@ jobs:
 Как только сборка отработает и в github registry появятся ваши образы, можно переходить к блоку настройки Kubernetes
 Успешным результатом данного шага является "зеленая" сборка и "зеленые" тесты
 
+#### Тесты через github actions
+![Скриншот тестов на гите](assets/images/tests_github_actions.png)
 
 ### Proxy в Kubernetes
 
