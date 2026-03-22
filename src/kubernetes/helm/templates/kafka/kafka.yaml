@@ -20,24 +20,6 @@ spec:
   selector:
     app: zookeeper
 ---
-{{- if .Values.zookeeper.persistence.enabled }}
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: zookeeper-data
-  namespace: {{ .Values.global.namespace }}
-  labels:
-    app: zookeeper
-    app.kubernetes.io/name: {{ include "cinemaabyss.name" . }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
-spec:
-  accessModes:
-    - {{ .Values.zookeeper.persistence.accessMode }}
-  resources:
-    requests:
-      storage: {{ .Values.zookeeper.persistence.size }}
-{{- end }}
----
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -89,16 +71,21 @@ spec:
             port: 2181
           initialDelaySeconds: 30
           periodSeconds: 15
-      {{- if .Values.zookeeper.persistence.enabled }}
-      volumes:
-      - name: zookeeper-data
-        persistentVolumeClaim:
-          claimName: zookeeper-data
-      {{- else }}
+  {{- if .Values.zookeeper.persistence.enabled }}
+  volumeClaimTemplates:
+  - metadata:
+      name: zookeeper-data
+    spec:
+      accessModes:
+        - {{ .Values.zookeeper.persistence.accessMode }}
+      resources:
+        requests:
+          storage: {{ .Values.zookeeper.persistence.size }}
+  {{- else }}
       volumes:
       - name: zookeeper-data
         emptyDir: {}
-      {{- end }}
+  {{- end }}
 ---
 apiVersion: v1
 kind: Service
@@ -115,24 +102,6 @@ spec:
     name: kafka
   selector:
     app: kafka
----
-{{- if .Values.kafka.persistence.enabled }}
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: kafka-data
-  namespace: {{ .Values.global.namespace }}
-  labels:
-    app: kafka
-    app.kubernetes.io/name: {{ include "cinemaabyss.name" . }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
-spec:
-  accessModes:
-    - {{ .Values.kafka.persistence.accessMode }}
-  resources:
-    requests:
-      storage: {{ .Values.kafka.persistence.size }}
-{{- end }}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -193,14 +162,19 @@ spec:
             port: 9092
           initialDelaySeconds: 60
           periodSeconds: 20
-      {{- if .Values.kafka.persistence.enabled }}
-      volumes:
-      - name: kafka-data
-        persistentVolumeClaim:
-          claimName: kafka-data
-      {{- else }}
+  {{- if .Values.kafka.persistence.enabled }}
+  volumeClaimTemplates:
+  - metadata:
+      name: kafka-data
+    spec:
+      accessModes:
+        - {{ .Values.kafka.persistence.accessMode }}
+      resources:
+        requests:
+          storage: {{ .Values.kafka.persistence.size }}
+  {{- else }}
       volumes:
       - name: kafka-data
         emptyDir: {}
-      {{- end }}
+  {{- end }}
 {{- end }}

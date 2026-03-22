@@ -1,0 +1,131 @@
+---
+# Circuit Breaker для Monolith сервиса
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: monolith-circuit-breaker
+  namespace: cinemaabyss
+  labels:
+    app: monolith
+    app.kubernetes.io/name: cinemaabyss
+    app.kubernetes.io/instance: cinemaabyss
+spec:
+  host: monolith.cinemaabyss.svc.cluster.local
+  trafficPolicy:
+    # Настройки подключения
+    connectionPool:
+      tcp:
+        # Максимальное количество подключений к сервису
+        maxConnections: 100
+      http:
+        # Максимальное количество HTTP/2 подключений на хост
+        h2UpgradePolicy: UPGRADE
+        # Максимальное количество ожидающих запросов
+        http1MaxPendingRequests: 100
+        # Максимальное количество параллельных запросов
+        http2MaxRequests: 1000
+        # Максимальное количество запросов на подключение
+        maxRequestsPerConnection: 10
+        # Максимальное количество повторных попыток
+        maxRetries: 3
+    # Настройки Circuit Breaker (Outlier Detection)
+    outlierDetection:
+      # Количество последовательных 5xx ошибок перед исключением
+      consecutive5xxErrors: 5
+      # Интервал проверки состояния хоста
+      interval: 30s
+      # Время перед возвращением хоста в пул
+      baseEjectionTime: 30s
+      # Максимальный процент хостов, которые могут быть исключены
+      maxEjectionPercent: 50
+
+---
+# Circuit Breaker для Movies сервиса
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: movies-service-circuit-breaker
+  namespace: cinemaabyss
+  labels:
+    app: movies-service
+    app.kubernetes.io/name: cinemaabyss
+    app.kubernetes.io/instance: cinemaabyss
+spec:
+  host: movies-service.cinemaabyss.svc.cluster.local
+  trafficPolicy:
+    # Настройки подключения - агрессивные лимиты для тестирования
+    connectionPool:
+      tcp:
+        # Максимальное количество подключений к сервису
+        maxConnections: 10
+      http:
+        # Максимальное количество HTTP/2 подключений на хост
+        h2UpgradePolicy: UPGRADE
+        # Максимальное количество ожидающих запросов (очень мало для теста)
+        http1MaxPendingRequests: 10
+        # Максимальное количество параллельных запросов
+        http2MaxRequests: 10
+        # Максимальное количество запросов на подключение
+        maxRequestsPerConnection: 5
+        # Максимальное количество повторных попыток
+        maxRetries: 1
+    # Настройки Circuit Breaker (Outlier Detection)
+    outlierDetection:
+      # Количество последовательных 5xx ошибок перед исключением
+      consecutive5xxErrors: 1
+      # Интервал проверки состояния хоста
+      interval: 5s
+      # Время перед возвращением хоста в пул
+      baseEjectionTime: 60s
+      # Максимальный процент хостов, которые могут быть исключены
+      maxEjectionPercent: 100
+
+---
+# Retry Policy для Movies сервиса
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: movies-service-retry-policy
+  namespace: cinemaabyss
+  labels:
+    app: movies-service
+    app.kubernetes.io/name: cinemaabyss
+    app.kubernetes.io/instance: cinemaabyss
+spec:
+  hosts:
+  - movies-service.cinemaabyss.svc.cluster.local
+  http:
+  - route:
+    - destination:
+        host: movies-service.cinemaabyss.svc.cluster.local
+        port:
+          number: 8081
+    retries:
+      attempts: 3
+      perTryTimeout: 2s
+      retryOn: 5xx,reset,connect-failure,retriable-4xx
+
+---
+# Retry Policy для Monolith сервиса
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: monolith-retry-policy
+  namespace: cinemaabyss
+  labels:
+    app: monolith
+    app.kubernetes.io/name: cinemaabyss
+    app.kubernetes.io/instance: cinemaabyss
+spec:
+  hosts:
+  - monolith.cinemaabyss.svc.cluster.local
+  http:
+  - route:
+    - destination:
+        host: monolith.cinemaabyss.svc.cluster.local
+        port:
+          number: 8080
+    retries:
+      attempts: 3
+      perTryTimeout: 2s
+      retryOn: 5xx,reset,connect-failure,retriable-4xx
