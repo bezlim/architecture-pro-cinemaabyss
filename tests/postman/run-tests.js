@@ -41,6 +41,12 @@ const argv = yargs(hideBin(process.argv))
     type: 'number',
     default: 10000
   })
+  .option('insecure', {
+    alias: 'i',
+    description: 'Disable SSL certificate verification',
+    type: 'boolean',
+    default: false
+  })
   .help()
   .alias('help', 'h')
   .argv;
@@ -74,6 +80,7 @@ const newmanOptions = {
   collection: require(collectionPath),
   environment: require(environmentPath),
   reporters: reporters,
+  insecure: argv.insecure,
   reporter: {
     htmlextra: {
       export: path.join(reportsDir, `report-${argv.environment}-${new Date().toISOString().replace(/:/g, '-')}.html`),
