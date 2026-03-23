@@ -1,0 +1,154 @@
+@startuml CinemaAbyss_Target_Architecture
+
+' ============================================================================
+' CinemaAbyss Target Architecture - C4 Container Diagram
+' ============================================================================
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+skinparam legendVisibility hidden
+
+title CinemaAbyss - Target Architecture (C4 Container)
+
+' ============================================================================
+' External Dependencies
+' ============================================================================
+
+Person_Ext(users, "Пользователи", "Mobile, Web, Smart TV, Desktop")
+
+System_Boundary(external, "External Systems") {
+    System_Ext(payment_gateways, "Payment Gateways", "Stripe, PayPal, CloudPayments")
+    System_Ext(recommendation_service, "Recommendation Service", "Сторонняя ML система")
+}
+
+' ============================================================================
+' System Boundary
+' ============================================================================
+
+System_Boundary(cinemaabyss, "CinemaAbyss Platform", "Kubernetes Cluster") {
+    
+    ' -------------------------------------------------------------------------
+    ' API Layer
+    ' -------------------------------------------------------------------------
+    Container_Boundary(api_layer, "API Layer") {
+        Container(api_gateway, "API Gateway", "Go/Kong", "JWT, RBAC, Rate Limiting")
+        
+        Container(mobile_bff, "Mobile BFF", "Go", "API для мобильных приложений")
+        Container(web_bff, "Web BFF", "Go", "API для веб-клиентов")
+        Container(tv_bff, "TV BFF", "Go", "API для Smart TV")
+    }
+    
+    ' -------------------------------------------------------------------------
+    ' Domain Services
+    ' -------------------------------------------------------------------------
+    Container_Boundary(domain_layer, "Domain Services") {
+        Container(users_service, "Users Service", "Go, PostgreSQL", "Пользователи, аутентификация")
+        Container(movies_service, "Movies Service", "Go, PostgreSQL", "Фильмы, метаданные, поиск")
+        Container(payments_service, "Payments Service", "Go, PostgreSQL", "Платежи, транзакции")
+        Container(subscriptions_service, "Subscriptions Service", "Go, PostgreSQL", "Подписки, планы")
+        Container(favorites_service, "Favorites Service", "Go, PostgreSQL", "Избранное, закладки")
+    }
+    
+    ' -------------------------------------------------------------------------
+    ' Event Bus
+    ' -------------------------------------------------------------------------
+    Container_Boundary(event_layer, "Event Bus") {
+        Container(kafka, "Apache Kafka", "Kafka", "Domain Events")
+    }
+    
+    ' -------------------------------------------------------------------------
+    ' Internal Services
+    ' -------------------------------------------------------------------------
+    Container_Boundary(internal_layer, "Internal Services") {
+        Container(notification_service, "Notification Service", "Go", "Email, Push, SMS")
+        Container(analytics_service, "Analytics Service", "Go, ClickHouse", "Аналитика, отчёты")
+        Container(ml_service, "ML Service", "Python", "Рекомендации, ML модели")
+    }
+    
+    ' -------------------------------------------------------------------------
+    ' Observability
+    ' -------------------------------------------------------------------------
+    Container_Boundary(observability_layer, "Observability") {
+        Container(elk, "Elastic APM", "ELK Stack", "Трассировка, логи, метрики")
+        Container(grafana, "Grafana", "Grafana", "Дашборды, визуализация")
+    }
+}
+
+' ============================================================================
+' Relationships - External
+' ============================================================================
+
+Rel(users, api_gateway, "HTTPS", "REST API")
+Rel(payments_service, payment_gateways, "HTTPS", "Платежи")
+Rel(movies_service, recommendation_service, "HTTPS", "Рекомендации")
+
+' ============================================================================
+' Relationships - API Layer
+' ============================================================================
+
+Rel(api_gateway, mobile_bff, "HTTPS", "Routing")
+Rel(api_gateway, web_bff, "HTTPS", "Routing")
+Rel(api_gateway, tv_bff, "HTTPS", "Routing")
+
+' ============================================================================
+' Relationships - BFF to Domain Services
+' ============================================================================
+
+Rel(mobile_bff, users_service, "HTTP", "REST")
+Rel(mobile_bff, movies_service, "HTTP", "REST")
+Rel(mobile_bff, favorites_service, "HTTP", "REST")
+
+Rel(web_bff, users_service, "HTTP", "REST")
+Rel(web_bff, movies_service, "HTTP", "REST")
+Rel(web_bff, payments_service, "HTTP", "REST")
+Rel(web_bff, subscriptions_service, "HTTP", "REST")
+Rel(web_bff, favorites_service, "HTTP", "REST")
+
+Rel(tv_bff, movies_service, "HTTP", "REST")
+Rel(tv_bff, favorites_service, "HTTP", "REST")
+
+' ============================================================================
+' Relationships - Domain Services to Event Bus
+' ============================================================================
+
+Rel(users_service, kafka, "Publish/Subscribe", "user.events")
+Rel(movies_service, kafka, "Publish/Subscribe", "movie.events")
+Rel(payments_service, kafka, "Publish/Subscribe", "payment.events")
+Rel(subscriptions_service, kafka, "Publish/Subscribe", "subscription.events")
+Rel(favorites_service, kafka, "Publish/Subscribe", "favorite.events")
+
+' ============================================================================
+' Relationships - Event Bus to Internal Services
+' ============================================================================
+
+Rel(kafka, notification_service, "Consume", "Events")
+Rel(kafka, analytics_service, "Consume", "Events")
+Rel(kafka, ml_service, "Consume", "Events")
+
+' ============================================================================
+' Relationships - Observability
+' ============================================================================
+
+Rel(users_service, elk, "APM", "Traces, Logs")
+Rel(movies_service, elk, "APM", "Traces, Logs")
+Rel(payments_service, elk, "APM", "Traces, Logs")
+Rel(elk, grafana, "Metrics", "Data Source")
+
+' ============================================================================
+' Notes
+' ============================================================================
+
+note right of api_gateway
+  **API Gateway**
+  JWT, RBAC, Rate Limiting
+end note
+
+note bottom of kafka
+  **Event Bus**
+  user.events, movie.events,
+  payment.events, subscription.events,
+  favorite.events
+end note
+
+@enduml

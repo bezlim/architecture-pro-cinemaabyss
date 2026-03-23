@@ -7,18 +7,20 @@ function show_usage {
   echo "Usage: $0 [options]"
   echo ""
   echo "Options:"
-  echo "  -e, --environment ENV   Specify environment (local, docker)"
+  echo "  -e, --environment ENV   Specify environment (local, docker, kubernetes)"
   echo "  -f, --folder FOLDER     Run specific test folder"
   echo "  -r, --reporters LIST    Comma-separated list of reporters"
   echo "  -b, --bail              Stop on first error"
   echo "  -t, --timeout MS        Request timeout in milliseconds"
   echo "  -d, --docker            Run tests in Docker container"
+  echo "  -i, --insecure          Disable SSL certificate verification"
   echo "  -h, --help              Show this help message"
   echo ""
   echo "Examples:"
   echo "  $0 -e local                     # Run all tests against local environment"
   echo "  $0 -e docker -f \"Movies Microservice\"  # Run only Movies tests against Docker environment"
   echo "  $0 -d -e docker                 # Run tests in Docker container against Docker environment"
+  echo "  $0 -e kubernetes -i             # Run tests against Kubernetes with insecure SSL"
 }
 
 # Default values
@@ -28,6 +30,7 @@ REPORTERS="cli,htmlextra,junit"
 BAIL=false
 TIMEOUT=10000
 USE_DOCKER=false
+INSECURE=false
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -51,6 +54,10 @@ while [[ $# -gt 0 ]]; do
     -t|--timeout)
       TIMEOUT="$2"
       shift 2
+      ;;
+    -i|--insecure)
+      INSECURE=true
+      shift
       ;;
     -d|--docker)
       USE_DOCKER=true
@@ -102,6 +109,10 @@ fi
 
 if [ -n "$TIMEOUT" ]; then
   CMD_ARGS="$CMD_ARGS --timeout $TIMEOUT"
+fi
+
+if [ "$INSECURE" = true ]; then
+  CMD_ARGS="$CMD_ARGS --insecure"
 fi
 
 # Create reports directory if it doesn't exist
